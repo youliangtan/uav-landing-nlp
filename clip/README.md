@@ -1,5 +1,7 @@
 # CLIP training
 
+> Originated from: https://github.com/revantteotia/clip-training
+
 This repository contains code to train [CLIP](https://github.com/openai/CLIP) on [MS-COCO](https://cocodataset.org/#home) captions. 
 Can be easily modified to train on other multi-modal datasets (OpenImages, Conceptual captions, ...).
 
@@ -11,7 +13,7 @@ Can be easily modified to train on other multi-modal datasets (OpenImages, Conce
 * Other requirements from 'requirements.txt'
 
 **To setup environment**
-```
+```bash
 # create new env clip_train
 $ conda create -n clip_train python=3.8.5
 
@@ -29,7 +31,7 @@ $ pip install -r requirements.txt
 MS-COCO training set images and their captions are used for training the CLIP model. 
 To download the dataset :
 
-```
+```bash
 # create directory in data/
 $ mkdir data/mscoco
 
@@ -64,7 +66,8 @@ $ python train.py --train_img_dir <path to training images directory> --train_an
 ### Training setting : 
 * Model config : Since MS-COCO is relatively small dataset, I used ResNet50 as image encoder instead of Vision Transformer. Further, I also reduced the number of transformer layers to 6 in text encoder. Detailed model config is here : [model_config.yaml](/model/model_config.yaml)
 
-* Batch size : 256. I trained using 4 GTX1080 GPUs (64 batch size per gpu).   
+* Batch size : 256. trained using 4 GTX1080 GPUs (64 batch size per gpu).   
+  * or, Batch size : 32. trained with 1 GTX1070 Ti 
 
 * Optimizer : Adam optimizer with weight decay.
 
@@ -82,7 +85,7 @@ For zero-shot classification, first all class names are converted into sentences
 
 - Download trained checkpoint from google drive : [link](https://drive.google.com/file/d/1BVEY4WeFmQb3wv0A6RaLyVjnc7qmChH2/view?usp=sharing) 
 - Or use gdown to download it : 
-  ```
+  ```bash
   # first install gdown
   $ pip install gdown
 
@@ -93,7 +96,7 @@ For zero-shot classification, first all class names are converted into sentences
 
 To classify image(s) into CIFAR100 classes, run the following
 
-```
+```bash
 # to classify a single image
 $ python zero_shot_demo.py --checkpoint_path <path_to_trained_checkpoint.pt> --img_path <path_to_img.jpg> --show_prediction
 
@@ -105,7 +108,7 @@ $ python zero_shot_demo.py --checkpoint_path <path_to_trained_checkpoint.pt> --i
 ```
 
 Example to run zero-shot demo:
-```
+```bash
 # first put trained weights at saved_checkpoints/trained_checkpoint.pt 
 
 # for single image
