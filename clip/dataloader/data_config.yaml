@@ -1,11 +1,10 @@
-#train_img_dir : 'data/mscoco/train2017'
-#train_annotation_file : 'data/mscoco/annotations/captions_train2017.json'
-# train_img_dir : '/content/drive/MyDrive/semantic_drone_dataset_processed/training_set/images'
-# train_annotation_file : '/content/drive/MyDrive/semantic_drone_dataset_processed/training_set/annoatation_merge_COCO.json'
-# checkpoint_path : '/content/drive/MyDrive/clip-training/saved_checkpoints/trained_checkpoint.pt'
+## Train with less data
+# train_img_dir : './training_set/object_near/images'
+# train_annotation_file : './training_set/object_near/annotation.json'
+# checkpoint_path : './saved_checkpoints/trained_checkpoint.pt'
 
-# Local test
-# TODO: change this according to env
-train_img_dir : './training_set/object_near/images'
-train_annotation_file : './training_set/object_near/annotation.json'
+# Train with all processed data
+train_img_dir : './semantic_drone_dataset_processed/training_set/images'
+train_annotation_file : './semantic_drone_dataset_processed/training_set/annotation_merge_COCO.json'
 checkpoint_path : './saved_checkpoints/trained_checkpoint.pt'
+

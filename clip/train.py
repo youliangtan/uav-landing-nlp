@@ -107,9 +107,6 @@ def train(config, train_dataset, model):
 
             global_loss += loss.item()
 
-            # for plotting loss graph
-            train_losses.append(loss.item())
-
             if (step + 1) % config.gradient_accumulation_steps == 0:
                 global_step += 1
                 optimizer.step() # PYTORCH 1.x : call optimizer.step() first then scheduler.step()
@@ -134,7 +131,10 @@ def train(config, train_dataset, model):
                         global_step == t_total:
                     # saving checkpoint
                     save_checkpoint(config, epoch, global_step, model, optimizer) 
-                    
+
+                # for plotting loss graph
+                train_losses.append(loss.item())
+
     history = {'train_loss': train_losses}
     return global_step, global_loss / global_step, history
 
@@ -171,7 +171,7 @@ def save_checkpoint(config, epoch, global_step, model, optimizer):
         logger.info("Failed to save checkpoint after 10 trails.")
     return
 
-def plot_history(history):
+def plot_history(history, show_plot=True):
     '''
     Plot training loss graph
     '''
@@ -180,7 +180,10 @@ def plot_history(history):
     plt.title('loss vs epoch'); plt.ylabel('loss')
     plt.xlabel('step')
     plt.legend(), plt.grid()
-    plt.show()
+    if show_plot:
+        plt.show()
+    else:
+        plt.savefig('loss_curve.png')
 
 ##############################################################################
 
@@ -233,9 +236,7 @@ def main():
     # Now training
     global_step, avg_loss, history = train(config, train_dataset, model)
 
-    if args.plot:
-        plot_history(history)
-    
+    plot_history(history, args.plot)    
     logger.info("Training done: total_step = %s, avg loss = %s", global_step, avg_loss)
     
 
