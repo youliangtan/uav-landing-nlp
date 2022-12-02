@@ -17,6 +17,9 @@ from torch.optim import Adam, AdamW # both are same but AdamW has a default weig
 import matplotlib.pyplot as plt
 import argparse
 
+from torch.utils.tensorboard import SummaryWriter
+writer = SummaryWriter()
+
 DATA_CONFIG_PATH = 'dataloader/data_config.yaml'
 TRAINER_CONFIG_PATH = 'trainer/train_config.yaml'
 MODEL_CONFIG_PATH = 'model/model_config.yaml'
@@ -36,7 +39,7 @@ def train(config, train_dataset, model):
     # total training iterations
     t_total = len(train_dataloader) // config.gradient_accumulation_steps \
                 * config.num_train_epochs
-    
+    total_batch = len(train_dataloader)
     optimizer = AdamW(model.parameters(), lr=config.optimizer.params.lr, eps=config.optimizer.params.eps, weight_decay=config.optimizer.params.weight_decay)
 
     # Warmup iterations = 20% of total iterations
@@ -71,6 +74,8 @@ def train(config, train_dataset, model):
     model.zero_grad()
 
     for epoch in range(int(config.num_train_epochs)):
+        batch_loss = 0.
+
         for step, batch in enumerate(train_dataloader):
             input_images, input_texts = batch
 
@@ -132,10 +137,15 @@ def train(config, train_dataset, model):
                     # saving checkpoint
                     save_checkpoint(config, epoch, global_step, model, optimizer) 
 
-                # for plotting loss graph
-                train_losses.append(loss.item())
+            
+            batch_loss += loss.item()
+
+        # for plotting loss graph
+        writer.add_scalar("Loss/train", batch_loss/total_batch, epoch)
+        train_losses.append(batch_loss/total_batch)
 
     history = {'train_loss': train_losses}
+    writer.flush()
     return global_step, global_loss / global_step, history
 
 
@@ -236,7 +246,9 @@ def main():
     # Now training
     global_step, avg_loss, history = train(config, train_dataset, model)
 
-    plot_history(history, args.plot)    
+    plot_history(history, args.plot)
+    writer.close()
+
     logger.info("Training done: total_step = %s, avg loss = %s", global_step, avg_loss)
     
 

@@ -63,6 +63,11 @@ OR, give dataset path as cl args
 $ python train.py --train_img_dir <path to training images directory> --train_annotation_file <path to annotation file>
 ```
 
+View tensorboard
+```bash
+tensorboard --logdir=runs
+```
+
 ### Training setting : 
 * Model config : Since MS-COCO is relatively small dataset, I used ResNet50 as image encoder instead of Vision Transformer. Further, I also reduced the number of transformer layers to 6 in text encoder. Detailed model config is here : [model_config.yaml](/model/model_config.yaml)
 
@@ -102,6 +107,10 @@ $ python zero_shot_demo.py --checkpoint_path <path_to_trained_checkpoint.pt> --i
 
 # to classify all images images in a directory
 $ python zero_shot_demo.py --checkpoint_path <path_to_trained_checkpoint.pt> --img_dir <path_to_img_directory> --show_prediction
+
+
+# run with aerial seg test dataset "test_images_red_cross"
+python zero_shot_demo.py --checkpoint_path saved_checkpoints/checkpoint_39_3560.pt --img_dir test_images_red_cross  --show_prediction
 
 # --show_prediction flag is to save a prediction figure with class probabilities
 # NOTE : Please put even number of images in img_directory to get a nice prediction figure
