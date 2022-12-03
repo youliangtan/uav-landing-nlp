@@ -1,0 +1,10 @@
+## Train with less data
+# train_img_dir : './training_set/object_near/images'
+# train_annotation_file : './training_set/object_near/annotation.json'
+# checkpoint_path : './saved_checkpoints/trained_checkpoint.pt'
+
+# Train with all processed data
+train_img_dir : './semantic_drone_dataset_processed/training_set/images'
+train_annotation_file : './semantic_drone_dataset_processed/training_set/annotation_merge_COCO.json'
+checkpoint_path : './saved_checkpoints/trained_checkpoint.pt'
+
