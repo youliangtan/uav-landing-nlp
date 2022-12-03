@@ -149,6 +149,52 @@ def show_predictions(images, predictions, dataset_classes, save_dir):
     plt.savefig(os.path.join(save_dir, "demo.png"))
     plt.show()
 
+def get_images(target_path, is_dir=True):
+    # Image transform and text tokenizer
+    transform = Compose([
+        Resize(224, interpolation=Image.BICUBIC),
+        CenterCrop(224),
+        lambda image: image.convert("RGB"),
+        ToTensor(),
+        Normalize((0.4225, 0.4012, 0.3659), (0.2681, 0.2635, 0.2763)),
+    ])
+
+    transform_no_norm = Compose([
+        Resize(224, interpolation=Image.BICUBIC),
+        CenterCrop(224),
+        lambda image: image.convert("RGB"),
+        ToTensor(),
+    ])
+
+    raw_images = []
+    images = []
+    image_names = []
+
+    if is_dir:
+        paths  = sorted(glob(target_path + '/*'))
+    else:
+        paths = [target_path]
+
+    # zero-shot demo for images in a directory
+    for img_path in paths:
+        image_name = os.path.split(img_path)[-1]
+        image = transform(Image.open(img_path)).unsqueeze(0)
+
+        # un normalized image for display
+        raw_image = transform_no_norm(Image.open(img_path))        
+        raw_images.append(raw_image)
+        images.append(image)
+        image_names.append(image_name)
+
+    return raw_images, images, image_names
+
+# Configurables
+def get_data_classes():
+    return ['car','fence','fence pole','person','dog','bicycle','bush','bald bush']
+
+def get_test_data_labels():
+    return ["bush","fence","person","person","dog","bush","bicycle","fence pole","bicycle","bush","fence","bush","fence pole","fence","dog","person"]
+
 def zero_shot_demo():
     parser = argparse.ArgumentParser()
     parser.add_argument("--checkpoint_path", default=None, type=str, required=True, help="path of saved weights")
@@ -166,30 +212,13 @@ def zero_shot_demo():
     device = torch.device(device)
 
     model_config = load_config_file(MODEL_CONFIG_PATH)
-
-    # Image transform and text tokenizer
-    transform = Compose([
-        Resize(224, interpolation=Image.BICUBIC),
-        CenterCrop(224),
-        lambda image: image.convert("RGB"),
-        ToTensor(),
-        Normalize((0.4225, 0.4012, 0.3659), (0.2681, 0.2635, 0.2763)),
-    ])
-
-    transform_no_norm = Compose([
-        Resize(224, interpolation=Image.BICUBIC),
-        CenterCrop(224),
-        lambda image: image.convert("RGB"),
-        ToTensor(),
-    ])
-
     tokenizer = SimpleTokenizer()
 
     # CIFAR100 classes
     # dataset_classes = ['apple', 'aquarium_fish', 'baby', 'bear', 'beaver', 'bed', 'bee', 'beetle', 'bicycle', 'bottle', 'bowl', 'boy', 'bridge', 'bus', 'butterfly', 'camel', 'can', 'castle', 'caterpillar', 'cattle', 'chair', 'chimpanzee', 'clock', 'cloud', 'cockroach', 'couch', 'crab', 'crocodile', 'cup', 'dinosaur', 'dolphin', 'elephant', 'flatfish', 'forest', 'fox', 'girl', 'hamster', 'house', 'kangaroo', 'keyboard', 'lamp', 'lawn_mower', 'leopard', 'lion', 'lizard', 'lobster', 'man', 'maple_tree', 'motorcycle', 'mountain', 'mouse', 'mushroom', 'oak_tree', 'orange', 'orchid', 'otter', 'palm_tree', 'pear', 'pickup_truck', 'pine_tree', 'plain', 'plate', 'poppy', 'porcupine', 'possum', 'rabbit', 'raccoon', 'ray', 'road', 'rocket', 'rose', 'sea', 'seal', 'shark', 'shrew', 'skunk', 'skyscraper', 'snail', 'snake', 'spider', 'squirrel', 'streetcar', 'sunflower', 'sweet_pepper', 'table', 'tank', 'telephone', 'television', 'tiger', 'tractor', 'train', 'trout', 'tulip', 'turtle', 'wardrobe', 'whale', 'willow_tree', 'wolf', 'woman', 'worm']
     
     # (YL) Custom classes for spatial reasoning
-    dataset_classes = ['car','fence','fence pole','person','dog','bicycle','bush','bald bush']
+    dataset_classes = get_data_classes()
     # print(dataset_classes)
 
     # creating RN50 CLIP model
@@ -205,33 +234,39 @@ def zero_shot_demo():
     model = model.to(device)
     model.eval()
 
-    images = []
-    image_names = []
-    raw_images = []
-
     if args.img_path:
-        # zero-shot demo on a single image only
-        img_path = args.img_path
-        image_name = os.path.split(img_path)[-1]
-        image = transform(Image.open(img_path)).unsqueeze(0)
-        raw_image = transform_no_norm(Image.open(img_path))        
-        raw_images.append(raw_image)
-        images.append(image)
-        image_names.append(image_name)
-    
-    else :
-        # zero-shot demo for images in a directory
-        for img_path in glob(args.img_dir + '/*'):
-            image_name = os.path.split(img_path)[-1]
-            image = transform(Image.open(img_path)).unsqueeze(0)
+        raw_images, images, image_names = get_images(args.img_path, is_dir=False)
+    else:
+        raw_images, images, image_names = get_images(args.img_dir, is_dir=True)
 
-            # un normalized image for display
-            raw_image = transform_no_norm(Image.open(img_path))        
-            raw_images.append(raw_image)
-            images.append(image)
-            image_names.append(image_name)
-    
-    predictions = predict_class(model, images, image_names, dataset_classes, tokenizer, device)
+    predictions = predict_class(
+        model, images, image_names, dataset_classes, tokenizer, device)
+
+    ###################################################
+    print("show predictions accuracy")
+    # TODO: These should be configurable
+    ground_truth = get_test_data_labels()
+    use_top_k = False       # TUNE
+    top_k = 1               # if use top K is true
+    prob_thresh = 0.25      # if use top K is false
+    corrects = 0
+    # This will enumerate the prediction results and comprare with labels
+    for i, p in enumerate(predictions):
+        if use_top_k:
+            top_k_indices = p[1][:top_k]
+        else:
+            size = 0
+            for prob in p[0]:
+                if prob < prob_thresh:
+                    break
+                size+=1
+            top_k_indices = p[1][:size]
+        selected_classes = [dataset_classes[i] for i in top_k_indices]
+        if ground_truth[i] in selected_classes:
+            corrects +=1
+    acc = corrects/len(ground_truth)
+    print("accuracy = ", acc)
+    ###################################################
 
     if args.show_predictions:
         if args.img_path:

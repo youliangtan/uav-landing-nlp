@@ -52,6 +52,8 @@ model/model_config.yaml     # CLIP model config
 dataloader/data_config.yaml # training dataset path
 ``` 
 
+Also make sure you have the test data downloaded from gdrive [link](https://drive.google.com/drive/folders/1CY3BIQwIfRT9tBkl2I-0DgresXuIaoOB?usp=sharing). The directory of these test images should be located at `clip/test_images_red_cross`
+
 ### To train : 
 Take dataset paths from 'dataloader/data_config.yaml'
 ```

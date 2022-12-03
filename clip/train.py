@@ -17,6 +17,8 @@ from torch.optim import Adam, AdamW # both are same but AdamW has a default weig
 import matplotlib.pyplot as plt
 import argparse
 
+from zero_shot_demo import get_images, predict_class, get_data_classes, get_test_data_labels
+
 from torch.utils.tensorboard import SummaryWriter
 writer = SummaryWriter()
 
@@ -24,14 +26,18 @@ DATA_CONFIG_PATH = 'dataloader/data_config.yaml'
 TRAINER_CONFIG_PATH = 'trainer/train_config.yaml'
 MODEL_CONFIG_PATH = 'model/model_config.yaml'
 
-def train(config, train_dataset, model):
+# TEST DATAS
+dataset_classes = get_data_classes()
+ground_truth = get_test_data_labels()
+
+def train(config, train_dataset, model, tokenizer):
     '''
     Trains the model.
     '''
 
     # plot loss graph across training
     train_losses = []
-    test_losses = []
+    test_accuracies = []
     
     config.train_batch_size = config.per_gpu_train_batch_size * max(1, config.n_gpu)    
     train_dataloader = get_dataloader(config, train_dataset, is_train=True)
@@ -69,9 +75,11 @@ def train(config, train_dataset, model):
     if scheduler:
         logger.info("  warmup steps = %d", num_warmup_steps)
 
-
     global_step, global_loss, global_acc =0,  0.0, 0.0
     model.zero_grad()
+
+    # get test images
+    raw_images, images, image_names = get_images("test_images_red_cross", is_dir=True)
 
     for epoch in range(int(config.num_train_epochs)):
         batch_loss = 0.
@@ -140,11 +148,42 @@ def train(config, train_dataset, model):
             
             batch_loss += loss.item()
 
+        ###################################################
+        # Run predictions to get accuracy
+        # TODO: These should be configurable
+        model.eval()
+        predictions = predict_class(
+            model, images, image_names, dataset_classes, tokenizer, config.device)
+        use_top_k = False       # TUNE
+        top_k = 1               # if use top K is true
+        prob_thresh = 0.25      # if use top K is false
+        corrects = 0
+        # This will enumerate the prediction results and comprare with labels
+        for i, p in enumerate(predictions):
+            if use_top_k:
+                top_k_indices = p[1][:top_k]
+            else:
+                size = 0
+                for prob in p[0]:
+                    if prob < prob_thresh:
+                        break
+                    size+=1
+                top_k_indices = p[1][:size]
+            selected_classes = [dataset_classes[i] for i in top_k_indices]
+            if ground_truth[i] in selected_classes:
+                corrects +=1
+        acc = corrects/len(ground_truth)
+        print("accuracy = ", acc)
+        model.train()
+        ###################################################
+
         # for plotting loss graph
         writer.add_scalar("Loss/train", batch_loss/total_batch, epoch)
         train_losses.append(batch_loss/total_batch)
+        writer.add_scalar("Test Accuracy", acc, epoch)
+        test_accuracies.append(acc)
 
-    history = {'train_loss': train_losses}
+    history = {'train_loss': train_losses, "test_accuraries": test_accuracies}
     writer.flush()
     return global_step, global_loss / global_step, history
 
@@ -185,15 +224,23 @@ def plot_history(history, show_plot=True):
     '''
     Plot training loss graph
     '''
-    plt.plot(history['train_loss'], label='train_loss', marker='*')
-    # plt.plot(history['test_loss'], label='test_loss',  marker='*')
-    plt.title('loss vs epoch'); plt.ylabel('loss')
-    plt.xlabel('step')
+    fig, (ax1, ax2) = plt.subplots(2)
+    fig.suptitle('Training losses')
+    ax1.plot(history['train_loss'], label='train_loss', marker='*')
+    ax1.set_title('loss vs epoch')
+    ax1.set_ylabel('loss')
+    ax1.set_xlabel('epoch')
+
+    ax2.plot(history['test_accuraries'], label='test_accuraries', marker='*')
+    ax2.set_title('test_acc vs epoch')
+    ax2.set_ylabel('acc')
+    ax2.set_xlabel('epoch')
     plt.legend(), plt.grid()
+
     if show_plot:
         plt.show()
     else:
-        plt.savefig('loss_curve.png')
+        plt.savefig('training_curve.png')
 
 ##############################################################################
 
@@ -244,7 +291,7 @@ def main():
     train_dataset = CLIP_COCO_dataset(config, tokenizer)
 
     # Now training
-    global_step, avg_loss, history = train(config, train_dataset, model)
+    global_step, avg_loss, history = train(config, train_dataset, model, tokenizer)
 
     plot_history(history, args.plot)
     writer.close()
