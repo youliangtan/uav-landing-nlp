@@ -154,7 +154,7 @@ def train(config, train_dataset, model, tokenizer):
         model.eval()
         predictions = predict_class(
             model, images, image_names, dataset_classes, tokenizer, config.device)
-        use_top_k = False       # TUNE
+        use_top_k = False       # SWITCH
         top_k = 1               # if use top K is true
         prob_thresh = 0.25      # if use top K is false
         corrects = 0
