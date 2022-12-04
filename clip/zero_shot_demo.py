@@ -93,7 +93,7 @@ def predict_class(model, images, image_names, dataset_classes, tokenizer, device
     
     return predictions                     
 
-def show_predictions(images, predictions, dataset_classes, save_dir):
+def show_predictions(images, predictions, dataset_classes, save_dir, labels=None):
     '''
     To give predictions in a nice figure
     '''
@@ -134,7 +134,8 @@ def show_predictions(images, predictions, dataset_classes, save_dir):
         plt.subplot(len(images)//2, 4, 2 * i + 1)
         plt.imshow(image.permute(1, 2, 0))
         plt.axis("off")
-
+        if labels:
+            plt.title(f"{labels[i]}", y=1.0, pad=-14, color='r')
         plt.subplot(len(images)//2, 4, 2 * i + 2)
         y = np.arange(top_probs[i].shape[-1])
         plt.grid()
@@ -246,7 +247,7 @@ def zero_shot_demo():
     print("show predictions accuracy")
     # TODO: These should be configurable
     ground_truth = get_test_data_labels()
-    use_top_k = False       # TUNE
+    use_top_k = False       # SWITCH
     top_k = 1               # if use top K is true
     prob_thresh = 0.25      # if use top K is false
     corrects = 0
@@ -282,7 +283,8 @@ def zero_shot_demo():
         else :
             # zero-shot demo for images in a directory
             try :
-                show_predictions(raw_images, predictions, dataset_classes, demo_output_dir)
+                assert len(ground_truth) == len(predictions)
+                show_predictions(raw_images, predictions, dataset_classes, demo_output_dir, ground_truth)
                 print("==========")
                 print(f"Please check the following for zero-shot prediction demo figure")
                 print(" -- ", os.path.join(demo_output_dir, "demo.png"))
